@@ -32,31 +32,6 @@ services:
       - *check-ports
       - ./prometheus:/etc/prometheus
 
-  postgres:
-    <<: *template
-    image: postgres
-    hostname: &name postgres
-    container_name: *name
-    ports:
-      - "5432:5432"
-    healthcheck:
-      <<: *hc
-      test: sh /bin/check-ports 5432
-    environment:
-      POSTGRES_USER: docker
-      POSTGRES_PASSWORD: docker
-
-  pg-exporter:
-    <<: *template
-    image: pg-exporter
-    hostname: &name pg-exporter
-    container_name: *name
-    healthcheck:
-      <<: *hc
-      test: 'true'
-    environment:
-      DATA_SOURCE_NAME: postgresql://docker:docker@postgres:5432/postgres?sslmode=disable
-
   kafka:
     <<: *template
     image: confluentinc/cp-kafka:7.5.3
@@ -64,13 +39,15 @@ services:
     container_name: *name
     ports:
       - "1234:1234"
+      - "9010:9010"
     healthcheck:
       <<: *hc
-      test: /bin/check-ports 9092 19092 1234
+      test: /bin/check-ports 9092 19092 1234 9010
     volumes:
       - *check-ports
       - ./prometheus:/etc/prometheus
       - ./jmx-exporter:/usr/share/jmx-exporter
+      - ./jfr:/tmp/jfr
     environment:
       CLUSTER_ID: JS-9P8KdQGG_lCVXikxM5w
       KAFKA_NODE_ID: 1
@@ -93,3 +70,11 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       EXTRA_ARGS: >
         -javaagent:/usr/share/jmx-exporter/jmx_prometheus_javaagent.jar=1234:/usr/share/jmx-exporter/kafka_broker.yml
+        -XX:StartFlightRecording=filename=/tmp/jfr/file.jfr
+        -Dcom.sun.management.jmxremote
+        -Dcom.sun.management.jmxremote.port=9010
+        -Dcom.sun.management.jmxremote.rmi.port=9010
+        -Dcom.sun.management.jmxremote.local.only=true
+        -Dcom.sun.management.jmxremote.authenticate=false
+        -Dcom.sun.management.jmxremote.ssl=false
+        -Djava.rmi.server.hostname=127.0.0.1
