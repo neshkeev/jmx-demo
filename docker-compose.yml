@@ -32,6 +32,26 @@ services:
       - *check-ports
       - ./prometheus:/etc/prometheus
 
+  grafana:
+    <<: *template
+    image: grafana/grafana
+    hostname: &name grafana
+    container_name: *name
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    healthcheck:
+      <<: *hc
+      test: /bin/check-ports 3000
+    volumes:
+      - *check-ports
+      - ./grafana/provisioning/:/etc/grafana/provisioning
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: true
+
   kafka:
     <<: *template
     image: confluentinc/cp-kafka:7.5.3
